@@ -1,7 +1,7 @@
 # Unzip archives and prepare data for training
 
 for f in raw_audio/*.zip; do
-    unzip $f -d chapters/
+    unzip $f -d chapters/ -x metadata.xml
 done
 
 unzip raw_text/*.zip -d text_by_book/
