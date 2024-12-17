@@ -68,7 +68,6 @@ def process_usx_file(usx_path, out_text_path, chapter_utterance):
         del chapters_original["DAN_014"]
         del chapters_segmented["DAN_014"]
 
-    book_id = os.path.basename(usx_path).split(".")[0]
     original_out_dir = os.path.join(out_text_path, "original")
     segmented_out_dir = os.path.join(out_text_path, "processed")
 
