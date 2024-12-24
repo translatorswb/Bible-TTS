@@ -1,0 +1,37 @@
+# Data directories
+chapters/
+raw_audio/
+raw_text/
+text_by_book/
+text_by_chapter/
+
+# Git directory
+.git/
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.egg-info/
+
+# Environment directories
+venv/
+env/
+.env/
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS specific files
+.DS_Store
+Thumbs.db

@@ -1,4 +1,2 @@
 beautifulsoup4
 lxml
-git+https://github.com/rehandaphedar/ctc-forced-aligner.git@split-preserve
-pydub
