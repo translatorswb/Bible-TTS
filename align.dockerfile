@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y \
 # Install Python dependencies
 RUN pip install --no-cache-dir \
     pydub \
-    git+https://github.com/rehandaphedar/ctc-forced-aligner.git@split-preserve
+    git+https://github.com/MahmoudAshraf97/ctc-forced-aligner.git
 
 # Copy the script
 COPY ctc-alignment.py .
