@@ -77,7 +77,7 @@ def align_audio(audio_path, text_path, alignment_model, alignment_tokenizer, lan
         lines = f.readlines()
 
     # if a line doesn't end with punctuation, add a period
-    lines = [line.strip() + "." if not line.strip().endswith((".", "!", "?")) else line.strip() for line in lines]
+    lines = [line.strip() + "." if not line.strip().endswith(('!', "'", ',', '.', ':', ';', '?')) else line.strip() for line in lines]
 
     text = " ".join(lines)
 
