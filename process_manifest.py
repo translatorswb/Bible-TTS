@@ -7,6 +7,9 @@ def process_manifest(manifest_path, score_threshold):
     # Load manifest
     with open(manifest_path, 'r', encoding='utf-8') as f:
         manifest = [json.loads(line) for line in f]
+
+    # Filter out segments with 0 duration
+    manifest = [entry for entry in manifest if entry['duration'] > 0]
     original_len = len(manifest)
 
     # Filter low score segments
