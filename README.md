@@ -18,10 +18,10 @@ pip install -r requirements.txt
 
 ```
 docker build -t ctc-aligner -f align.dockerfile .
-docker run --runtime=nvidia --gpus all -v $PWD/text_by_chapter/processed/:/app/text_dir \
-                      -v $PWD/chapters/:/app/audio_dir \
-                      -v $PWD/data/:/app/output_dir \
-                      ctc-aligner /app/text_dir /app/audio_dir /app/output_dir
+docker run --runtime=nvidia --gpus all -v $PWD/text_by_chapter/processed:/app/text_dir \
+                      -v $PWD/chapters:/app/audio_dir \
+                      -v $PWD/data:/app/data \
+                      ctc-aligner /app/text_dir /app/audio_dir /app/data
 sudo chown -R $USER:$USER data/
 ```
 
@@ -36,7 +36,7 @@ Replace `-50` with the threshold you want to use to filter out unaligned segment
 
 ```
 docker build -t bible-tts -f train.dockerfile .
-docker run --ipc=host --runtime=nvidia --gpus all -v $PWD/data/:/app/output_dir \
+docker run --ipc=host --runtime=nvidia --gpus all -v $PWD/data:/app/data \
                       -v $PWD/vits_hausa/:/app/vits_hausa \
                       bible-tts
 ```
