@@ -31,3 +31,12 @@ sudo chown -R $USER:$USER data/
 python process_manifest.py data/manifest.jsonl -50
 ```
 Replace `-50` with the threshold you want to use to filter out unaligned segments.
+
+## Train the model
+
+```
+docker build -t bible-tts -f train.dockerfile .
+docker run --ipc=host --runtime=nvidia --gpus all -v $PWD/data/:/app/output_dir \
+                      -v $PWD/vits_hausa/:/app/vits_hausa \
+                      bible-tts
+```

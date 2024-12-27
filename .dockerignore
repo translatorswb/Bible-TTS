@@ -4,6 +4,8 @@ raw_audio/
 raw_text/
 text_by_book/
 text_by_chapter/
+data/
+vit_hausa/
 
 # Git directory
 .git/
