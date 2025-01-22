@@ -14,7 +14,7 @@ import json
 output_path = "vits_hausa"
 
 dataset_config = BaseDatasetConfig(
-    meta_file_train="manifest_train.jsonl", meta_file_val="manifest_dev.jsonl", language="ha", path="output_dir"
+    meta_file_train="manifest_train.jsonl", meta_file_val="manifest_dev.jsonl", language="ha", path="data"
 )
 
 audio_config = VitsAudioConfig(
