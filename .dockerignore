@@ -5,7 +5,10 @@ raw_text/
 text_by_book/
 text_by_chapter/
 data/
-vit_hausa/
+
+# Model directories
+vits_hausa/
+xtts_hausa/
 
 # Git directory
 .git/

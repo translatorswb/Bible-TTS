@@ -168,4 +168,8 @@ text_by_chapter/
 text_by_book/
 raw_text/
 raw_audio/
+evaluation/
+
+# models
 vits_hausa/
+xtts_hausa/
