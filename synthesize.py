@@ -11,6 +11,7 @@ import torchaudio
 
 from pymcd.mcd import Calculate_MCD
 from joblib import Parallel, delayed
+from tqdm import tqdm
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -67,8 +68,8 @@ def xtts(model, gpt_cond_latent, speaker_embedding, text, file_path):
     torchaudio.save(file_path, torch.tensor(out["wav"]).unsqueeze(0), 24000)
 
 
-def synthesize(model_path, config_path, vocab_path, model_name, items, output_dir, speaker_audio_file, mono_speaker=False):
-    manifest_path = os.path.join(output_dir, "synthesized_manifest.jsonl")
+def synthesize(model_path, config_path, vocab_path, model_name, items, output_dir, speaker_audio_file, mono_speaker=False, manifest_name="synthesized_manifest.jsonl"):
+    manifest_path = os.path.join(output_dir, manifest_name)
 
     if os.path.exists(manifest_path):
         print(f"Manifest file already exists at {manifest_path}")
@@ -84,13 +85,20 @@ def synthesize(model_path, config_path, vocab_path, model_name, items, output_di
         raise ValueError("Either model path or model name must be provided")
 
     os.makedirs(os.path.join(output_dir, "synthesized"), exist_ok=True)
-    for i, item in enumerate(items):
+    for i, item in enumerate(tqdm(items)):
         file_path = os.path.join(output_dir, "synthesized", os.path.basename(item["audio_file"]))
+
+        # Check if synthesized file already exists
+        if os.path.exists(file_path):
+            items[i]["synthesized_file"] = os.path.abspath(file_path)
+            continue
+
         speaker = item["speaker_name"] if not mono_speaker else None
         if model_path and vocab_path and speaker_audio_file:
             xtts(model, gpt_cond_latent, speaker_embedding, item["text"], file_path)
         else:
             model.tts_to_file(item["text"], file_path=file_path, speaker=speaker, language=item["language"])
+
         items[i]["synthesized_file"] = os.path.abspath(file_path)
 
     with open(manifest_path, "w", encoding="utf-8") as f:

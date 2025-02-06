@@ -2,6 +2,33 @@ import argparse
 import os
 import pandas as pd
 from synthesize import synthesize
+from joblib import Parallel, delayed
+import numpy as np
+
+
+def process_chunk(idx, chunk, model_path, config_path, vocab_path, model_name, output_dir, speaker_audio_file, mono_speaker):
+    items = []
+    for _, row in chunk.iterrows():
+        items.append({
+            "text": row["Text"],
+            "audio_file": row["ID"] + ".wav",
+            "speaker_name": None,
+            "language": "ha"
+        })
+
+    manifest_name = f"synthesized_manifest_{idx}.jsonl"
+
+    synthesize(
+        model_path,
+        config_path,
+        vocab_path,
+        model_name,
+        items,
+        output_dir,
+        speaker_audio_file,
+        mono_speaker,
+        manifest_name
+    )
 
 
 if __name__ == "__main__":
@@ -14,6 +41,7 @@ if __name__ == "__main__":
     parser.add_argument("--output_dir", type=str, required=True, help="Path to save the synthesized audio")
     parser.add_argument("--speaker_audio_file", type=str, help="Path to the reference speaker audio file")
     parser.add_argument("--mono_speaker", action="store_true", help="Override speaker names in case the model is not multi-speaker")
+    parser.add_argument("--n_jobs", type=int, default=1, help="Number of parallel jobs")
     args = parser.parse_args()
 
     if args.model_path and not args.config_path:
@@ -25,47 +53,21 @@ if __name__ == "__main__":
         assert os.path.exists(args.vocab_path), "Vocab file not found, please provide the path to the vocab file"
 
     df = pd.read_csv(args.csv_path)
+
+    # shuffle the dataframe
+    df = df.sample(frac=1)
+
     print(f"Fetched {len(df)} items from the csv file")
 
-    eval_1 = df[df["Evaluator"] == 'evaluator1']
-    eval_2 = df[df["Evaluator"] == 'evaluator2']
-
-    items_1 = []
-    for _, row in eval_1.iterrows():
-        items_1.append({
-            "text": row["Text"],
-            "audio_file": row["ID"] + ".wav",
-            "speaker_name": None,
-            "language": "ha"
-        })
-
-    items_2 = []
-    for _, row in eval_2.iterrows():
-        items_2.append({
-            "text": row["Text"],
-            "audio_file": row["ID"] + ".wav",
-            "speaker_name": None,
-            "language": "ha"
-        })
-
-    synthesize(
-        args.model_path,
-        args.config_path,
-        args.vocab_path,
-        args.model_name,
-        items_1,
-        os.path.join(args.output_dir, "evaluator1"),
-        args.speaker_audio_file,
+    chunks = np.array_split(df, args.n_jobs)
+    Parallel(n_jobs=args.n_jobs)(delayed(process_chunk)(
+        i,
+        chunk, 
+        args.model_path, 
+        args.config_path, 
+        args.vocab_path, 
+        args.model_name, 
+        args.output_dir, 
+        args.speaker_audio_file, 
         args.mono_speaker
-    )
-
-    synthesize(
-        args.model_path,
-        args.config_path,
-        args.vocab_path,
-        args.model_name,
-        items_2,
-        os.path.join(args.output_dir, "evaluator2"),
-        args.speaker_audio_file,
-        args.mono_speaker
-    )
+    ) for i, chunk in enumerate(chunks))
