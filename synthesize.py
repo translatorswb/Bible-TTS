@@ -2,7 +2,7 @@ import argparse
 import os
 import json
 
-from TTS.api import TTS
+from TTS.api import TTS as TTS_API
 from TTS.tts.configs.xtts_config import XttsConfig
 from TTS.tts.models.xtts import Xtts
 
@@ -12,6 +12,28 @@ import torchaudio
 from pymcd.mcd import Calculate_MCD
 from joblib import Parallel, delayed
 from tqdm import tqdm
+
+class TTS(TTS_API):
+    @property
+    def is_multi_lingual(self):
+        # Not sure what sets this to None, but applied a fix to prevent crashing.
+        if (
+            isinstance(self.model_name, str)
+            and "xtts" in self.model_name
+            or self.config
+            and ("xtts" in self.config.model or "languages" in self.config and len(self.config.languages) > 1)
+        ):
+            return True
+        if hasattr(self.synthesizer.tts_model, "language_manager") and self.synthesizer.tts_model.language_manager:
+            return self.synthesizer.tts_model.language_manager.num_languages >= 1
+        return False
+    
+    @property
+    def is_multi_speaker(self):
+        if hasattr(self.synthesizer.tts_model, "speaker_manager") and self.synthesizer.tts_model.speaker_manager:
+            return self.synthesizer.tts_model.speaker_manager.num_speakers >= 1
+        return False
+
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -53,10 +75,10 @@ def load_xtts(xtts_checkpoint, xtts_config, xtts_vocab, speaker_audio_file):
     return model, gpt_cond_latent, speaker_embedding
 
 
-def xtts(model, gpt_cond_latent, speaker_embedding, text, file_path):
+def xtts_to_file(model, gpt_cond_latent, speaker_embedding, text, file_path, language):
     out = model.inference(
         text=text,
-        language="ha",
+        language=language,
         gpt_cond_latent=gpt_cond_latent,
         speaker_embedding=speaker_embedding,
         # temperature=0.1,
@@ -68,7 +90,7 @@ def xtts(model, gpt_cond_latent, speaker_embedding, text, file_path):
     torchaudio.save(file_path, torch.tensor(out["wav"]).unsqueeze(0), 24000)
 
 
-def synthesize(model_path, config_path, vocab_path, model_name, items, output_dir, speaker_audio_file, mono_speaker=False, manifest_name="synthesized_manifest.jsonl"):
+def synthesize(model_path, config_path, vocab_path, model_name, items, output_dir, speaker_audio_file, device, mono_speaker=False, manifest_name="synthesized_manifest.jsonl"):
     manifest_path = os.path.join(output_dir, manifest_name)
 
     if os.path.exists(manifest_path):
@@ -78,9 +100,9 @@ def synthesize(model_path, config_path, vocab_path, model_name, items, output_di
     if model_path and vocab_path and speaker_audio_file:
         model, gpt_cond_latent, speaker_embedding = load_xtts(model_path, config_path, vocab_path, speaker_audio_file)
     elif model_path:        
-        model = TTS(model_path=model_path, config_path=config_path).to(DEVICE)
+        model = TTS(model_path=model_path, config_path=config_path).to(device)
     elif model_name:
-        model = TTS(model_name=model_name, config_path=config_path).to(DEVICE)
+        model = TTS(model_name=model_name, config_path=config_path).to(device)
     else:
         raise ValueError("Either model path or model name must be provided")
 
@@ -93,11 +115,13 @@ def synthesize(model_path, config_path, vocab_path, model_name, items, output_di
             items[i]["synthesized_file"] = os.path.abspath(file_path)
             continue
 
+        text = item["text"]
         speaker = item["speaker_name"] if not mono_speaker else None
+        language = item["language"] if "language" in item else None
         if model_path and vocab_path and speaker_audio_file:
-            xtts(model, gpt_cond_latent, speaker_embedding, item["text"], file_path)
+            xtts_to_file(model, gpt_cond_latent, speaker_embedding, text, file_path, language)
         else:
-            model.tts_to_file(item["text"], file_path=file_path, speaker=speaker, language=item["language"])
+            model.tts_to_file(text, file_path=file_path, speaker=speaker, language=language)
 
         items[i]["synthesized_file"] = os.path.abspath(file_path)
 
@@ -149,6 +173,7 @@ if __name__ == "__main__":
     parser.add_argument("--speaker_audio_file", type=str, help="Path to the reference speaker audio file")
     parser.add_argument("--mono_speaker", action="store_true", help="Override speaker names in case the model is not multi-speaker")
     parser.add_argument("--calculate_mcd", action="store_true", help="Calculate Mel Cepstral Distortion")
+    parser.add_argument("--device", type=str, default=DEVICE, help="Device to run the model on (default: cuda if available, else cpu)")
     args = parser.parse_args()
 
     if args.model_path and not args.config_path:
@@ -170,6 +195,7 @@ if __name__ == "__main__":
                items,
                args.output_dir,
                args.speaker_audio_file,
+               args.device,
                args.mono_speaker
     )
 
