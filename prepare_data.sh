@@ -1,12 +1,15 @@
-# Unzip archives and prepare data for training
+#!/bin/bash
 
-for f in raw_audio/*.zip; do
-    unzip $f -d chapters/ -x metadata.xml
-done
+# Check arguments
+if [ -z "$1" ] || [ -z "$2" ]; then
+    echo "Usage: $0 <USX directory> <language>"
+    exit 1
+fi
 
-unzip raw_text/*.zip -d text_by_book/
+DIR=$1
+LANG=$2
 
 # Process text data
-for f in text_by_book/release/USX_2/*.usx; do
-    python process_chapters_text.py $f text_by_chapter/ Sura
+for f in $DIR/*.usx; do
+    python process_chapters_text.py $f $DIR/../../../text_by_chapter/ $LANG
 done
