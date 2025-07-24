@@ -2,12 +2,13 @@ from bs4 import BeautifulSoup
 import os
 import argparse
 from text_utils import normalize_text
+from num2luo import number_to_luo
 
 
 NON_SPEECH_ELEM_STYLES = ['b', 'r', 'iex', 'ms', 'mr', 'cl']
 
 
-def process_usx_file(usx_path, out_text_path, chapter_utterance):
+def process_usx_file(usx_path, out_text_path, language, chapter_utterance=None):
     usx_content = open(usx_path, 'r')
     soup = BeautifulSoup(usx_content, features="lxml")
 
@@ -15,7 +16,11 @@ def process_usx_file(usx_path, out_text_path, chapter_utterance):
     for note in soup.find_all('note'):
         note.decompose()
 
-    title = soup.find("para", {"style": "h"}).text
+    if chapter_utterance:
+        title = soup.find("para", {"style": "h"}).text # hausa
+    else:
+        title = soup.find("para", {"style": "toc1"}).text # luo and chichewa
+
     code = soup.find("book")['code']
 
     chapters_original = {}
@@ -28,9 +33,15 @@ def process_usx_file(usx_path, out_text_path, chapter_utterance):
             chapter_no = elem['number']
             chapter_id = code + "_" + chapter_no.zfill(3)
 
-            chapter_text = title + " " + chapter_utterance + " " + chapter_no + "\n"
+            if language == "luo":
+                chapter_no = number_to_luo(int(chapter_no))
+
+            if chapter_utterance:
+                chapter_text = title + " " + chapter_utterance + " " + chapter_no + "\n"
+            else:
+                chapter_text = title + " " + chapter_no + "\n"
         elif chapter_text and elem.name == 'para':
-            if elem['style'] in ["s1", "ms1"]:
+            if elem['style'] in ["s1", "s2", "ms1"]:
                 chapter_text += elem.text + "\n"
             elif elem['style'] not in NON_SPEECH_ELEM_STYLES:
                 for v in elem.children:
@@ -60,7 +71,7 @@ def process_usx_file(usx_path, out_text_path, chapter_utterance):
                             chapter_text += v.text
         elif elem.name == 'chapter' and 'eid' in elem.attrs:
             chapters_original[chapter_id] = chapter_text
-            chapters_segmented[chapter_id] = normalize_text(chapter_text, remove_punc=False)
+            chapters_segmented[chapter_id] = normalize_text(chapter_text, language)
 
     # There is no Daniel 14, it has only 12 chapters
     if "DAN_014" in chapters_original:
@@ -90,8 +101,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Extract chapters from a USX file and save them into separate text files.")
     parser.add_argument("usx_file", help="Path to the input USX file.")
     parser.add_argument("output_dir", help="Path to the output directory.")
-    parser.add_argument("chapter_utterance", help="Chapter utterance to prepend to each chapter.")
+    parser.add_argument("language", help="Language of the text.", choices=["luo", "hausa", "chichewa"])
 
     args = parser.parse_args()
 
-    process_usx_file(args.usx_file, args.output_dir, args.chapter_utterance)
+    chapter_utterance = "Sura" if args.language == "hausa" else None
+
+    process_usx_file(args.usx_file, args.output_dir, args.language, chapter_utterance)
