@@ -162,14 +162,10 @@ cython_debug/
 #.idea/
 
 # data
-data/
-chapters/
-text_by_chapter/
-text_by_book/
-raw_text/
-raw_audio/
-evaluation/
 
-# models
-vits_hausa/
-xtts_hausa/
+data/*/chapters/
+data/*/text_by_chapter*/
+data/*/text_by_book/
+data/*/raw_text/
+data/*/raw_audio/
+data/*/tts_data*/

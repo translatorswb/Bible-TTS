@@ -9,6 +9,11 @@ data/
 # Model directories
 vits_hausa/
 xtts_hausa/
+yourtts_hausa/
+yourtts_luo/
+xtts_luo/
+yourtts_chichewa/
+xtts_chichewa/
 
 # Git directory
 .git/
