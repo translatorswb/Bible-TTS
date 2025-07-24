@@ -8,18 +8,25 @@ from TTS.tts.layers.xtts.trainer.gpt_trainer import GPTArgs, GPTTrainer, GPTTrai
 from TTS.utils.manage import ModelManager
 from math import ceil
 
+LANG_TO_ISO = {
+    "hausa": "ha",
+    "luo": "luo",
+    "chichewa": "nya"
+}
+
+subdirs = [d for d in os.listdir() if os.path.isdir(d) and d.startswith('xtts')]
+OUT_PATH = subdirs[0]
+LANG_NAME = OUT_PATH.split('_')[1]
+
 # Logging parameters
-RUN_NAME = "GPT_XTTS_HAUSA_FT"
+RUN_NAME = f"GPT_XTTS_{LANG_NAME.upper()}_FT"
 PROJECT_NAME = "XTTS_trainer"
 DASHBOARD_LOGGER = "tensorboard"
 LOGGER_URI = None
 
-# Set here the path that the checkpoints will be saved.
-OUT_PATH = "xtts_hausa"
-
 # Training Parameters
 OPTIMIZER_WD_ONLY_ON_WEIGHTS = True  # for multi-gpu training please make it False
-START_WITH_EVAL = True  # if True it will star with evaluation
+START_WITH_EVAL = True  # if True it will start with evaluation
 BATCH_SIZE = 1  # set here the batch size
 GRAD_ACUMM_STEPS = ceil(252 / BATCH_SIZE)  # set here the grad accumulation steps
 # Note: we recommend that BATCH_SIZE * GRAD_ACUMM_STEPS need to be at least 252 for more efficient training. You can increase/decrease BATCH_SIZE but then set GRAD_ACUMM_STEPS accordingly.
@@ -31,7 +38,7 @@ config_dataset = BaseDatasetConfig(
     path="data/",
     meta_file_train="manifest_train.csv",
     meta_file_val="manifest_dev.csv",
-    language="ha",
+    language=LANG_TO_ISO[LANG_NAME],
 )
 
 # Add here the configs of the datasets
@@ -95,7 +102,32 @@ print(f"Eval samples: {len(eval_samples)}")
 samples_len = [len(item["text"].split(" ")) for item in train_samples]
 longest_text_idx = samples_len.index(max(samples_len))
 SPEAKER_REFERENCE = [train_samples[longest_text_idx]["audio_file"]]  # speaker reference to be used in training test sentences
+print(f"Using speaker reference: {SPEAKER_REFERENCE}")
 LANGUAGE = config_dataset.language
+
+HAUSA_TEST_SENTENCES = [
+    "Umarnai don zaman tsarki.",
+    "wanda kuma ya faɗa mana ƙaunar da kuke yi cikin Ruhu.",
+    "Gama mun ji labarin bangaskiyarku a cikin Yesu Kiristi da kuma ƙaunar da kuke yi saboda dukan tsarkaka."
+    ]
+
+LUO_TEST_SENTENCES = [
+    "jo kolosai achiel.",
+    "magoyo erokamano ni wuoro ka un gi mor.",
+    "epafra bende nonyisowa kuom hera ma roho maler osemiyou."
+    ]
+
+CHICHEWA_TEST_SENTENCES = [
+    "umene unafika kwa inu.",
+    "tukiko adzakuwuzani zonse za ine.",
+    "iye anachita mtendere kudzera mʼmagazi ake, wokhetsedwa pa mtanda."
+    ]
+
+TEST_SENTENCES = {
+    "hausa": [{"text": text, "speaker_wav": SPEAKER_REFERENCE, "language": LANGUAGE} for text in HAUSA_TEST_SENTENCES],
+    "luo": [{"text": text, "speaker_wav": SPEAKER_REFERENCE, "language": LANGUAGE} for text in LUO_TEST_SENTENCES],
+    "chichewa": [{"text": text, "speaker_wav": SPEAKER_REFERENCE, "language": LANGUAGE} for text in CHICHEWA_TEST_SENTENCES]
+    }
 
 
 def main():
@@ -143,9 +175,8 @@ def main():
     config.plot_step = 100
     config.log_model_step = 100
     config.save_step = 10000
-    config.save_n_checkpoints = 10
+    config.save_n_checkpoints = 2
     config.save_checkpoints = True
-    config.save_all_best = True
     config.save_best_after = 0
     config.print_eval = False
     # Optimizer values like tortoise, pytorch implementation with modifications to not apply WD to non-weight parameters.
@@ -154,24 +185,8 @@ def main():
     config.optimizer_params = {"betas": [0.9, 0.96], "eps": 1e-8, "weight_decay": 1e-2}
     config.lr = 5e-06  # learning rate
     config.lr_scheduler = "MultiStepLR"
-    config.lr_scheduler_params = {"milestones": [50000 * 18, 150000 * 18, 300000 * 18], "gamma": 0.5, "last_epoch": -1}
-    config.test_sentences=[
-            {
-                "text": "Umarnai don zaman tsarki.",
-                "speaker_wav": SPEAKER_REFERENCE,
-                "language": LANGUAGE,
-            },
-            {
-                "text": "wanda kuma ya faɗa mana ƙaunar da kuke yi cikin Ruhu.",
-                "speaker_wav": SPEAKER_REFERENCE,
-                "language": LANGUAGE,
-            },
-            {
-                "text": "Gama mun ji labarin bangaskiyarku a cikin Yesu Kiristi da kuma ƙaunar da kuke yi saboda dukan tsarkaka.",
-                "speaker_wav": SPEAKER_REFERENCE,
-                "language": LANGUAGE,
-            }
-        ]
+    config.lr_scheduler_params = {"milestones": [5000, 150000, 300000], "gamma": 0.5, "last_epoch": -1}
+    config.test_sentences=TEST_SENTENCES[LANG_NAME]
 
     # init the model from config
     model = GPTTrainer.init_from_config(config)
