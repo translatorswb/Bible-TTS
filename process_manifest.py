@@ -3,13 +3,18 @@ import os
 import json
 
 
-def process_manifest(manifest_path, score_threshold):
+def process_manifest(manifest_path, score_threshold, language, drop_numbers):
     # Load manifest
     with open(manifest_path, 'r', encoding='utf-8') as f:
         manifest = [json.loads(line) for line in f]
 
     # Filter out segments with 0 duration
     manifest = [entry for entry in manifest if entry['duration'] > 0]
+
+    # Filter out segments with numbers
+    if drop_numbers:
+        manifest = [entry for entry in manifest if not any(char.isdigit() for char in entry['text'])]
+
     original_len = len(manifest)
 
     # Filter low score segments
@@ -17,12 +22,13 @@ def process_manifest(manifest_path, score_threshold):
     len_filtered = len(filtered_manifest)
     print(f"Filtered {original_len - len_filtered} low score segments ({(original_len - len_filtered) / original_len * 100:.2f}%)")
 
-    # Isolate speakers
-    speaker_two_books = ['JOS', 'JDG', 'RUT', '1SA', '2SA', '1KI', '2KI', '1CH', '2CH', 'EZR', 'NEH', 'EST', 'ISA', 'JER', 'LAM', 'EZK', 'DAN', 'ROM', '1CO', '2CO', 'GAL', 'EPH', 'PHP', 'COL', '1TH', '2TH', '1TI', '2TI', 'TIT', 'PHM', 'HEB', 'JAS', '1PE', '2PE', '1JN', '2JN', '3JN', 'JUD']
-    for entry in filtered_manifest:
-        book = os.path.basename(entry['audio_filepath']).split('_')[0]
-        speaker = 'two' if book in speaker_two_books else 'one'
-        entry['speaker_name'] = speaker
+    # Isolate speakers for Hausa
+    if language == 'hausa':
+        speaker_two_books = ['JOS', 'JDG', 'RUT', '1SA', '2SA', '1KI', '2KI', '1CH', '2CH', 'EZR', 'NEH', 'EST', 'ISA', 'JER', 'LAM', 'EZK', 'DAN', 'ROM', '1CO', '2CO', 'GAL', 'EPH', 'PHP', 'COL', '1TH', '2TH', '1TI', '2TI', 'TIT', 'PHM', 'HEB', 'JAS', '1PE', '2PE', '1JN', '2JN', '3JN', 'JUD']
+        for entry in filtered_manifest:
+            book = os.path.basename(entry['audio_filepath']).split('_')[0]
+            speaker = 'two' if book in speaker_two_books else 'one'
+            entry['speaker_name'] = speaker
 
     # Separate dev and test sets
     dev_set = [entry for entry in filtered_manifest if os.path.basename(entry['audio_filepath']).split('_')[0] == 'EZR']
@@ -54,8 +60,10 @@ def process_manifest(manifest_path, score_threshold):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Filter low score segments and isolate speakers in manifest')
     parser.add_argument('manifest_path', help='Path to the manifest file')
+    parser.add_argument('language', help='Language of the dataset')
     parser.add_argument('min_score', type=float, help='Threshold for filtering low score segments')
+    parser.add_argument('--drop_numbers', action='store_true', help='Drop segments with numbers')
 
     args = parser.parse_args()
 
-    process_manifest(args.manifest_path, args.min_score)
+    process_manifest(args.manifest_path, args.min_score, args.language, args.drop_numbers)
